@@ -1,0 +1,44 @@
+{
+  "name": "tradingview_alerts",
+  "base": "PersistedModel",
+  "idInjection": true,
+  "options": {
+    "validateUpsert": true
+  },
+  "properties": {
+    "ticker": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "price": {
+      "type": "number"
+    },
+    "time": {
+      "type": "date"
+    },
+    "title": {
+      "type": "string"
+    },
+    "timeframe": {
+      "type": "string"
+    },
+    "buysell": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "author": {
+      "type": "string"
+    }
+  },
+  "validations": [],
+  "relations": {},
+  "acls": [],
+  "methods": {}
+}
