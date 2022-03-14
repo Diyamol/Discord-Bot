@@ -18,8 +18,16 @@ const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_
 
 client.on('ready',()=>{
     console.log("Connected as "+ client.user.tag)
+
+    // client.guilds.cache.forEach((guild)=>{
+    //     console.log(guild.name)
+    //     guild.channels.cache.forEach((channel)=>{
+    //         console.log(` - ${channel.name} ${channel.type} ${channel.id}`)
+    //     })
+    // })
    
     let generalChannel=client.channels.cache.get("947910712951463950")
+    let alertsChannel=client.channels.cache.get("952954022376120320")
     var checkminutes = 1, checkthe_interval = checkminutes * 60 * 1000; //This checks every 1 minutes, change 10 to whatever minute you'd like
      var oldCount=0,alertCount=0,newAllCount,newSpecCount;
      var allAlertsAndTickers
@@ -94,7 +102,7 @@ client.on('ready',()=>{
                 else{
                   primaryTitle+='{title:"'+currentTitle+'"},'
                 }
-                console.log(secondaryTitle)
+                //console.log(secondaryTitle)
                 if(currentTicker.includes(',')){
                   mainTicker=currentTicker.split(",")
                   mainTicker.forEach((k,i)=>{
@@ -145,7 +153,7 @@ else{
           app.models.tradingview_alerts.count({where:{or:[{and:[onlyTitle,{and:[{ticker:{"neq":" "}},{ticker:{"neq":null}}]}]},{and:[{title:{"neq":" "}},{and:[{title:{"neq":null}}]},onlyTicker]},{and:[{or:[secondaryTitle]},{or:[secondaryTicker]}]}]}},function(errCount,resCount){
             if(errCount){
               console.log(errCount+" error in count of specific ")
-              console.log("error in specific count")
+              //console.log("error in specific count")
               oldCount=0
             }
             else{
@@ -240,11 +248,11 @@ else{
 }
 
     setInterval(function() {
-      console.log(allAlertsAndTickers)
+     // console.log(allAlertsAndTickers)
      
     if(allAlertsAndTickers===1){
       app.models.tradingview_alerts.count({where:{and:[{and:[{title:{"neq":" "}},{ticker:{"neq":" "}}]},{and:[{title:{"neq":null}},{ticker:{"neq":null}}]}]},order:"time desc"},function(errAllNewCount,resultAllCount){
-        console.log(errAllNewCount,resultAllCount)
+       // console.log(errAllNewCount,resultAllCount)
         if(errAllNewCount){
           console.log("error in count with all titles and tickers "+errAllNewCount)
           newAllCount=1
@@ -255,9 +263,9 @@ else{
             newAllCount=2
           }
           else{
-            console.log(resultAllCount+ " new result count for all titles and tickers x")
+           // console.log(resultAllCount+ " new result count for all titles and tickers x")
             newAllCount=resultAllCount
-            console.log("resultAllCount "+newAllCount)
+           // console.log("resultAllCount "+newAllCount)
           }
         }
       })
@@ -268,7 +276,7 @@ else{
         app.models.tradingview_alerts.find({where:{and:[{and:[{title:{"neq":" "}},{ticker:{"neq":" "}}]},{and:[{title:{"neq":null}},{ticker:{"neq":null}}]}]},order:"time desc",limit:newAllCount-oldCount},function(errAll,resAll){
           if(errAll){
             console.log(errAll+" All tickers and titles")
-            console.log("error in conditions with all tickers and titles")
+           // console.log("error in conditions with all tickers and titles")
           }
           else{
             if(resAll){
@@ -280,6 +288,7 @@ else{
                 alertValue=newAlertValue.slice(0, -1)
               console.log(alertValue+" all titles and tickers with new alerts")
               generalChannel.send(alertValue)
+              alertsChannel.send(alertValue)
             }
           }
         })
@@ -289,6 +298,7 @@ else{
         alertValue="Hi, your alerts are up to date"
         console.log("Hi, your all alerts are up to date")
         generalChannel.send(alertValue)
+        alertsChannel.send(alertValue)
       }
     }
     else{
@@ -319,7 +329,7 @@ else{
            console.log("specific, new count"+newSpecCount)
            console.log("specific, old count"+oldCount)
             if(newSpecCount>oldCount){
-              app.models.tradingview_alerts.find({where:{or:[{and:[onlyTitle,{and:[{ticker:{"neq":" "}},{ticker:{"neq":null}}]}]},{and:[{title:{"neq":" "}},{and:[{title:{"neq":null}}]},onlyTicker]},{and:[{or:[secondaryTitle]},{or:[secondaryTicker]}]}]},order:"id desc",limit:newSpecCount-oldCount},function(err,res){
+              app.models.tradingview_alerts.find({where:{or:[{and:[onlyTitle,{and:[{ticker:{"neq":" "}},{ticker:{"neq":null}}]}]},{and:[{title:{"neq":" "}},{and:[{title:{"neq":null}}]},onlyTicker]},{and:[{or:[secondaryTitle]},{or:[secondaryTicker]}]}]},order:"time desc",limit:newSpecCount-oldCount},function(err,res){
                 if(err){
                   console.log(err+"error and all other conditions with alert values")
                   console.log("error in conditions")
@@ -334,6 +344,7 @@ else{
                       specAlertValue=newAlertValue.slice(0, -1)
                     console.log(specAlertValue+" alerts for all other conditions")
                     generalChannel.send(specAlertValue)
+                    alertsChannel.send(alertValue)
                   }
                 }
               })
@@ -343,6 +354,7 @@ else{
               specAlertValue="Hi, your alerts are up to date"
               console.log("Hi, your spec alerts are up to date")
               generalChannel.send(specAlertValue)
+              alertsChannel.send(alertValue)
             }
           }
           else{
@@ -359,7 +371,7 @@ else{
             console.log("specific, new count"+newSpecCount)
             console.log("specific, old count"+oldCount)
              if(newSpecCount>oldCount){
-               app.models.tradingview_alerts.find({where:{or:[{and:[onlyTitle,{and:[{ticker:{"neq":" "}},{ticker:{"neq":null}}]}]},{and:[{title:{"neq":" "}},{and:[{title:{"neq":null}}]},onlyTicker]}]},order:"id desc",limit:newSpecCount-oldCount},function(erronlytTitleOnlytTickerres,resonlytTitleOnlytTickerres){
+               app.models.tradingview_alerts.find({where:{or:[{and:[onlyTitle,{and:[{ticker:{"neq":" "}},{ticker:{"neq":null}}]}]},{and:[{title:{"neq":" "}},{and:[{title:{"neq":null}}]},onlyTicker]}]},order:"time desc",limit:newSpecCount-oldCount},function(erronlytTitleOnlytTickerres,resonlytTitleOnlytTickerres){
                  if(erronlytTitleOnlytTickerres){
                    console.log(erronlytTitleOnlytTickerres+"case 3 alert  err")
                  }
@@ -373,6 +385,7 @@ else{
                        specAlertValue=newAlertValue.slice(0, -1)
                      console.log(specAlertValue+" alerts for all other conditions")
                      generalChannel.send(specAlertValue)
+                     alertsChannel.send(alertValue)
                    }
                  }
                })
@@ -395,7 +408,7 @@ else{
                 }
             })
             if(newSpecCount>oldCount){
-              app.models.tradingview_alerts.find({where:{or:[{and:[{title:{"neq":" "}},{and:[{title:{"neq":null}}]},onlyTicker]},{and:[{or:[secondaryTitle]},{or:[secondaryTicker]}]}]},order:"id desc",limit:newSpecCount-oldCount},function(errSpecalertRes,SpecalertRes){
+              app.models.tradingview_alerts.find({where:{or:[{and:[{title:{"neq":" "}},{and:[{title:{"neq":null}}]},onlyTicker]},{and:[{or:[secondaryTitle]},{or:[secondaryTicker]}]}]},order:"time desc",limit:newSpecCount-oldCount},function(errSpecalertRes,SpecalertRes){
                 if(errSpecalertRes){
                   console.log(errSpecalertRes+"case 5 alert count err")
                 }
@@ -409,6 +422,7 @@ else{
                       specAlertValue=newAlertValue.slice(0, -1)
                     console.log(specAlertValue+" case 5 alert count res")
                     generalChannel.send(specAlertValue)
+                    alertsChannel.send(alertValue)
                   }
                 }
               })
@@ -418,6 +432,7 @@ else{
               specAlertValue="Hi, your alerts are up to date"
               console.log("Hi, your spec alerts are up to date")
               generalChannel.send(specAlertValue)
+              alertsChannel.send(alertValue)
             }
           }
           else{
@@ -433,7 +448,7 @@ else{
             }
           })
           if(newSpecCount>oldCount){
-            app.models.tradingview_alerts.find({where:{and:[{title:{"neq":" "}},{and:[{title:{"neq":null}}]},onlyTicker]},order:"id desc",limit:newSpecCount-oldCount},function(errOnlytTickerAlert,OnlytTickerAlertRes){
+            app.models.tradingview_alerts.find({where:{and:[{title:{"neq":" "}},{and:[{title:{"neq":null}}]},onlyTicker]},order:"time desc",limit:newSpecCount-oldCount},function(errOnlytTickerAlert,OnlytTickerAlertRes){
               if(errOnlytTickerAlert){
                 console.log(errOnlytTickerAlert+"case 6 alert  err")
               }
@@ -447,6 +462,7 @@ else{
                     specAlertValue=newAlertValue.slice(0, -1)
                   console.log(specAlertValue+" alerts for all other conditions")
                   generalChannel.send(specAlertValue)
+                  alertsChannel.send(alertValue)
                 }
               }
             })
@@ -456,6 +472,7 @@ else{
             specAlertValue="Hi, your alerts are up to date"
             console.log("Hi, your spec alerts are up to date")
             generalChannel.send(specAlertValue)
+            alertsChannel.send(alertValue)
           }
           }
         }
@@ -477,7 +494,7 @@ else{
               }
             })
             if(newSpecCount>oldCount){
-              app.models.tradingview_alerts.find({where:{or:[{and:[{ticker:{"neq":" "}},{and:[{ticker:{"neq":null}}]},onlyTitle]},{and:[{or:[secondaryTitle]},{or:[secondaryTicker]}]}]},order:"id desc",limit:newSpecCount-oldCount},function(errOnlyTickerAndOnlyTitleAlert,resOnlyTickerAndOnlyTitleAlertRes){
+              app.models.tradingview_alerts.find({where:{or:[{and:[{ticker:{"neq":" "}},{and:[{ticker:{"neq":null}}]},onlyTitle]},{and:[{or:[secondaryTitle]},{or:[secondaryTicker]}]}]},order:"time desc",limit:newSpecCount-oldCount},function(errOnlyTickerAndOnlyTitleAlert,resOnlyTickerAndOnlyTitleAlertRes){
                 if(errOnlyTickerAndOnlyTitleAlert){
                   console.log(errOnlyTickerAndOnlyTitleAlert+"case 6 alert res err")
                 }
@@ -491,6 +508,7 @@ else{
                       specAlertValue=newAlertValue.slice(0, -1)
                     console.log(specAlertValue+" case 6 alert  res")
                     generalChannel.send(specAlertValue)
+                    alertsChannel.send(alertValue)
                   }
                 }
               })
@@ -500,6 +518,7 @@ else{
               specAlertValue="Hi, your alerts are up to date"
               console.log("Hi, your spec alerts are up to date")
               generalChannel.send(specAlertValue)
+              alertsChannel.send(alertValue)
             }
           }
           else{
@@ -514,7 +533,7 @@ else{
               }
             })
             if(newSpecCount>oldCount){
-              app.models.tradingview_alerts.find({where:{and:[onlyTitle,{and:[{ticker:{"neq":" "}},{ticker:{"neq":null}}]}]},order:"id desc",limit:newSpecCount-oldCount},function(errAllTickerAndOnlyTitleAlert,resAllTickerAndOnlyTitleAlert){
+              app.models.tradingview_alerts.find({where:{and:[onlyTitle,{and:[{ticker:{"neq":" "}},{ticker:{"neq":null}}]}]},order:"time desc",limit:newSpecCount-oldCount},function(errAllTickerAndOnlyTitleAlert,resAllTickerAndOnlyTitleAlert){
                 if(errAllTickerAndOnlyTitleAlert){
                   console.log(errAllTickerAndOnlyTitleAlert+"case 6 alert res err")
                 }
@@ -528,6 +547,7 @@ else{
                       specAlertValue=newAlertValue.slice(0, -1)
                     console.log(specAlertValue+" case 6 alert  res")
                     generalChannel.send(specAlertValue)
+                    alertsChannel.send(alertValue)
                   }
                 }
               })
@@ -537,6 +557,7 @@ else{
               specAlertValue="Hi, your alerts are up to date"
               console.log("Hi, your spec alerts are up to date")
               generalChannel.send(specAlertValue)
+              alertsChannel.send(alertValue)
             }
           }
         }
@@ -544,6 +565,7 @@ else{
           specAlertValue="Hi, your alerts are up to date"
             console.log("Hi, your spec alerts are up to date")
             generalChannel.send(specAlertValue)
+            alertsChannel.send(alertValue)
         }
       }
     }
