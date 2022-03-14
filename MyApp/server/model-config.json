@@ -16,5 +16,9 @@
   "tradingview_alerts": {
     "dataSource": "mysqlFinanceDb",
     "public": true
+  },
+  "trading_view_subscription": {
+    "dataSource": "mysqlTrustDSpaceDb",
+    "public": true
   }
 }

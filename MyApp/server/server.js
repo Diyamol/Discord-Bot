@@ -11,121 +11,548 @@ const app = module.exports = loopback();
 const { Client, Intents,Discord } = require('discord.js');
 const configVal = require("./config.json");
 const { channel } = require('diagnostics_channel');
+const { title } = require('process');
 //const client = new Discord.Client();
 
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES] });
-var x = app.models.model-1
+
 client.on('ready',()=>{
     console.log("Connected as "+ client.user.tag)
-    client.user.setActivity("Youtube",{type:"Watching"})
-    // client.guilds.cache.forEach((guild)=>{
-    //     console.log(guild.name)
-    //     guild.channels.cache.forEach((channel)=>{
-    //         console.log(` - ${channel.name} ${channel.type} ${channel.id}`)
-    //     })
-    // })
-    let generalChannel=client.channels.cache.get("947910712951463950")
-            
    
-    client.on('message',(receivedMessage)=>{
-        
-       if(receivedMessage.author==client.user){
-            return
-        }
+    let generalChannel=client.channels.cache.get("947910712951463950")
+    var checkminutes = 1, checkthe_interval = checkminutes * 60 * 1000; //This checks every 1 minutes, change 10 to whatever minute you'd like
+     var oldCount=0,alertCount=0,newAllCount,newSpecCount;
+     var allAlertsAndTickers
+     var allAlertsAndSpecificTickers,allAlertsAndTickerNull=0,nullAlertsAndTickers=0,alertsAndNullTickers=0
+     var SpecificAlertsAndAllTickers
+     var SpecificAlertsAndTickers
+     var onlyTicker='',onlySingleTicker=''
+     var onlyTitle='',onlySingleTitle=''
+     var currentTitle,mainTitle,primaryTitle='',secondaryTitle='',onlyPrimaryTitle=''
+     var currentTicker,mainTicker,primaryTicker='',secondaryTicker='',onlyPrimaryTicker=''
 
-        if (receivedMessage.content.startsWith("!")){
-            
-            processCommand(receivedMessage)
-        }
-        else{
-            
-        }
-    })
-
-  
-    function processCommand(receivedMessage){
-        let fullCommand=receivedMessage.content.substr(1)
-        let splitCommand=fullCommand.split(" ")
-        let primaryCommand=splitCommand[0]
-        let arguments=splitCommand.slice(1)
-
-        if(primaryCommand=="help"){
-            helpCommand(arguments,receivedMessage)
-        }
-        else if(primaryCommand=="multiply"){
-            multiplyCommand(arguments,receivedMessage)
-        }
-        else if(primaryCommand=="bye"){
-            receivedMessage.channel.send("Bye, Have a nice day")
-        }
-        else{
-            receivedMessage.channel.send("Unknown command. Try `!help` or `!multiply`")
-        }
-    }
-
-    function multiplyCommand(arguments,receivedMessage){
-        if(arguments.length<2){
-            receivedMessage.channel.send("Not enough arguments. try ` !multiply 2 10`")
-            return
-        }
-        let product =1
-        arguments.forEach((value)=>{
-            product=product*parseFloat(value)
-        })
-        receivedMessage.channel.send("The product of "+arguments+" is "+product.toString())
-    }
-
-    function helpCommand(arguments,receivedMessage){
-        if(arguments.length==0){
-            receivedMessage.channel.send("I'm not sure what you need help with. Try `!help [topic]`")
-        }
-        else{
-          var botResponse=arguments
-          app.models.tradingview_alerts.create({
-            ticker:"AA",
-            message:botResponse,
-            time:new Date().toISOString(),
-            title:"NH"
+     // ****************fetching all conditions from trading_view_subscription****************
+     app.models.trading_view_subscription.find(function(error,rs){
+      if(error){
+        console.log("error in fetching data from subscription table")
+      }
+      else{
+        if(rs.count!==0){
+          
+          rs.forEach((key,i)=>{
+            if(key.alert_keyword==="*"){
+              if(key.ticker==="$"){
+                allAlertsAndTickers=1
+              }
+              else if(key.ticker===null || key.ticker===" "){
+                allAlertsAndTickerNull=1
+              }
+              else{
+                onlyTickerArr=key.ticker
+                if(onlyTickerArr.includes(',')){
+                  onlyTickerArrValue=onlyTickerArr.split(",")
+                  onlyTickerArrValue.forEach((k,i)=>{
+                    onlyPrimaryTicker+='{ticker:"'+k+'"},'
+                  })
+                }
+                else{
+                  onlyPrimaryTicker+='{ticker:"'+onlyTickerArr+'"},'
+                }
+                allAlertsAndSpecificTickers=onlyPrimaryTicker
+              }
+            } 
+            else if(key.alert_keyword===null || key.alert_keyword===" "){
+              nullAlertsAndTickers=1
+            }
+            else{
+              if(key.ticker==="$"){
+                onlyTitleArr=key.ticker
+                if(onlyTitleArr.includes(',')){
+                  onlyTitleArrValue=onlyTitleArr.split(",")
+                  onlyTitleArrValue.forEach((k,i)=>{
+                    onlyPrimaryTitle+='{title:"'+k+'"},'
+                  })
+                }
+                else{
+                  onlyPrimaryTitle+='{title:"'+onlyTitleArr+'"},'
+                }
+                
+                SpecificAlertsAndAllTickers=onlyPrimaryTitle
+              }
+              else if(key.ticker===null || key.ticker===" "){
+                alertsAndNullTickers=1
+              }
+              else{
+                currentTitle=key.alert_keyword
+                currentTicker=key.ticker
+                if(currentTitle.includes(',')){
+                  mainTitle=currentTitle.split(",")
+                  mainTitle.forEach((k,i)=>{
+                    primaryTitle+='{title:"'+k+'"},'
+                  })
+                }
+                else{
+                  primaryTitle+='{title:"'+currentTitle+'"},'
+                }
+                console.log(secondaryTitle)
+                if(currentTicker.includes(',')){
+                  mainTicker=currentTicker.split(",")
+                  mainTicker.forEach((k,i)=>{
+                    primaryTicker+='{ticker:"'+k+'"},'
+                  })
+                }
+                else{
+                  primaryTicker+='{ticker:"'+currentTicker+'"},'
+                }
+                SpecificAlertsAndTickers=primaryTitle+primaryTicker
+              }
            
-
-          },function(error,res){
-            if(error){
-              console.log(error)
+          }
+        })
+        }
+      }
+     })
+ 
+var newAlertValue, alertValue,specAlertValue;
+if(allAlertsAndTickers!==null){
+  app.models.tradingview_alerts.count({where:{and:[{and:[{title:{"neq":" "}},{ticker:{"neq":" "}}]},{and:[{title:{"neq":null}},{ticker:{"neq":null}}]}]}},function(errAllCount,resultAllCount){
+    if(errAllCount){
+      console.log("error in count with all titles and tickers "+errAllCount)
+              oldCount=1
+    }
+    else{
+      if(!resultAllCount){
+        console.log("Something went wrong in all titles and tickers count")
+        oldCount=2
+      }
+      else{
+        console.log(resultAllCount+ " result count for all titles and tickers")
+        oldCount=resultAllCount
+       // newAllCount=oldCount
+        console.log(newAllCount+ " result count for all titles and tickers new")
+      }
+    }
+  })
+}
+else{
+  if(allAlertsAndSpecificTickers!==null){
+    onlyTicker=onlyPrimaryTicker.slice(0, -1)
+    if(SpecificAlertsAndAllTickers!==null){
+      onlyTitle=onlyPrimaryTitle.slice(0, -1)
+      if(SpecificAlertsAndTickers!==null){
+        secondaryTitle=primaryTitle.slice(0, -1)
+        secondaryTicker=primaryTicker.slice(0, -1)
+          app.models.tradingview_alerts.count({where:{or:[{and:[onlyTitle,{and:[{ticker:{"neq":" "}},{ticker:{"neq":null}}]}]},{and:[{title:{"neq":" "}},{and:[{title:{"neq":null}}]},onlyTicker]},{and:[{or:[secondaryTitle]},{or:[secondaryTicker]}]}]}},function(errCount,resCount){
+            if(errCount){
+              console.log(errCount+" error in count of specific ")
+              console.log("error in specific count")
+              oldCount=0
+            }
+            else{
+              if(!resCount){
+                console.log("something went wrong in specific count")
+                oldCount=0
+              }
+              else{
+                console.log(resCount+" count of all specific alerts and tickers")
+                oldCount=resCount
+              }
             }
           })
-           // receivedMessage.channel.send("It looks like you need help with "+arguments)
-            app.models.tradingview_alerts.findOne({where:{"id":"1"}},function(err,result){
-               
-               if(err){
-                 console.log(err)
-               }
-               else{
-                 if(result){
-                  let titlename = result.toJSON().title;
-                  if (!titlename) {
-                    console.log("a")
-                  }
-                  else{
-                    receivedMessage.channel.send("It looks like you need help with "+botResponse+"\n"+titlename)
-                    console.log(titlename)
-                  }
-                 }
-               }
-              
-             })
-        }
+      }
+      else{
+        app.models.tradingview_alerts.count({where:{or:[{and:[onlyTitle,{and:[{ticker:{"neq":" "}},{ticker:{"neq":null}}]}]},{and:[{title:{"neq":" "}},{and:[{title:{"neq":null}}]},onlyTicker]}]}},function(erronlytTitleOnlytTickerCount,resonlytTitleOnlytTickerCount){
+          if(erronlytTitleOnlytTickerCount){
+            console.log(erronlytTitleOnlytTickerCount+" case 3 ")
+            oldCount=0
+          }
+          else{
+            console.log(resonlytTitleOnlytTickerCount+" count of all specific alerts and tickers")
+            oldCount=resonlytTitleOnlytTickerCount
+          }
+        })
+      }
     }
-    
-})
+    else{
+      if(SpecificAlertsAndTickers!==null){
+        secondaryTitle=primaryTitle.slice(0, -1)
+        secondaryTicker=primaryTicker.slice(0, -1)
+          app.models.tradingview_alerts.count({where:{or:[{and:[{title:{"neq":" "}},{and:[{title:{"neq":null}}]},onlyTicker]},{and:[{or:[secondaryTitle]},{or:[secondaryTicker]}]}]}},function(errOnlyTickerAndTitleTickerCount,resOnlyTickerAndTitleTickerCount){
+            if(errOnlyTickerAndTitleTickerCount){
+              console.log(errOnlyTickerAndTitleTickerCount+" case 4 err ")
+              oldCount=0
+            }
+            else{
+                console.log(resOnlyTickerAndTitleTickerCount+" case 4 res")
+                oldCount=resOnlyTickerAndTitleTickerCount
+            }
+          })
+      }
+      else{
+        app.models.tradingview_alerts.count({where:{and:[{title:{"neq":" "}},{and:[{title:{"neq":null}}]},onlyTicker]},function(errOnlytTickerCount,resOnlytTickerCount){
+          if(errOnlytTickerCount){
+            console.log(errOnlytTickerCount+" case 5 err ")
+            oldCount=0
+          }
+          else{
+            console.log(resOnlytTickerCount+" case 5 res")
+            oldCount=resOnlytTickerCount
+          }
+        }
+      })
+      }
+    }
+  }
+  else{
+    if(SpecificAlertsAndAllTickers!==null){
+      onlyTitle=onlyPrimaryTitle.slice(0, -1)
+      if(SpecificAlertsAndTickers!==null){
+        secondaryTitle=primaryTitle.slice(0, -1)
+        secondaryTicker=primaryTicker.slice(0, -1)
+        app.models.tradingview_alerts.count({where:{or:[{and:[onlyTitle,{and:[{ticker:{"neq":" "}},{ticker:{"neq":null}}]}]},{and:[{or:[secondaryTitle]},{or:[secondaryTicker]}]}]}},function(errOnlyTickerAndOnlyTitleCount,resOnlyTickerAndOnlyTitleCount){
+          if(errOnlyTickerAndOnlyTitleCount){
+            console.log(errOnlyTickerAndOnlyTitleCount+" case 6 err ")
+            oldCount=0
+          }
+          else{
+              console.log(resOnlyTickerAndOnlyTitleCount+" case 6 res")
+              oldCount=resOnlyTickerAndOnlyTitleCount
+          }
+        })
+      }
+      else{
+        app.models.tradingview_alerts.count({where:{and:[onlyTitle,{and:[{ticker:{"neq":" "}},{ticker:{"neq":null}}]}]}},function(errAllTickerAndOnlyTitleCount,resAllTickerAndOnlyTitleCount){
+          if(errAllTickerAndOnlyTitleCount){
+            console.log(errAllTickerAndOnlyTitleCount+" case 7 err ")
+            oldCount=0
+          }
+          else{
+              console.log(resAllTickerAndOnlyTitleCount+" case 7 res")
+              oldCount=resAllTickerAndOnlyTitleCount
+          }
+        })
+      }
+    }
+    else{
+      oldCount=0
+    }
+  }
+}
+
+    setInterval(function() {
+      console.log(allAlertsAndTickers)
+     
+    if(allAlertsAndTickers===1){
+      app.models.tradingview_alerts.count({where:{and:[{and:[{title:{"neq":" "}},{ticker:{"neq":" "}}]},{and:[{title:{"neq":null}},{ticker:{"neq":null}}]}]},order:"time desc"},function(errAllNewCount,resultAllCount){
+        console.log(errAllNewCount,resultAllCount)
+        if(errAllNewCount){
+          console.log("error in count with all titles and tickers "+errAllNewCount)
+          newAllCount=1
+        }
+        else{
+          if(!resultAllCount){
+            console.log("Something went wrong in all titles and tickers count")
+            newAllCount=2
+          }
+          else{
+            console.log(resultAllCount+ " new result count for all titles and tickers x")
+            newAllCount=resultAllCount
+            console.log("resultAllCount "+newAllCount)
+          }
+        }
+      })
+     console.log("all, new count "+newAllCount)
+     console.log("all, old count "+oldCount)
+     //oldCount=0
+      if(newAllCount>oldCount){
+        app.models.tradingview_alerts.find({where:{and:[{and:[{title:{"neq":" "}},{ticker:{"neq":" "}}]},{and:[{title:{"neq":null}},{ticker:{"neq":null}}]}]},order:"time desc",limit:newAllCount-oldCount},function(errAll,resAll){
+          if(errAll){
+            console.log(errAll+" All tickers and titles")
+            console.log("error in conditions with all tickers and titles")
+          }
+          else{
+            if(resAll){
+                //alertValue="Hi, you have some new alerts "+resAll[0].title
+                newAlertValue="Hi, you have some new alerts "
+                resAll.forEach((k,i)=>{
+                  newAlertValue+=k.title+','
+                })
+                alertValue=newAlertValue.slice(0, -1)
+              console.log(alertValue+" all titles and tickers with new alerts")
+              generalChannel.send(alertValue)
+            }
+          }
+        })
+        oldCount=newAllCount
+      }
+      else{
+        alertValue="Hi, your alerts are up to date"
+        console.log("Hi, your all alerts are up to date")
+        generalChannel.send(alertValue)
+      }
+    }
+    else{
+      if(allAlertsAndSpecificTickers!==null){
+        onlyTicker=onlyPrimaryTicker.slice(0, -1)
+        if(SpecificAlertsAndAllTickers!==null){
+          onlyTitle=onlyPrimaryTitle.slice(0, -1)
+          if(SpecificAlertsAndTickers!==null){
+            secondaryTitle=primaryTitle.slice(0, -1)
+            secondaryTicker=primaryTicker.slice(0, -1)
+            app.models.tradingview_alerts.count({where:{or:[{and:[onlyTitle,{and:[{ticker:{"neq":" "}},{ticker:{"neq":null}}]}]},{and:[{and:[{title:{"neq":" "}},{title:{"neq":null}}]},onlyTicker]},{and:[{or:[secondaryTitle]},{or:[secondaryTicker]}]}]}},function(errSpecCount,resSpecCount){
+              if(errSpecCount){
+                console.log(errSpecCount+" error in count of specific ")
+                console.log("error in specific count")
+                newSpecCount=0
+              }
+              else{
+                if(!resSpecCount){
+                  console.log("something went wrong in specific count")
+                  newSpecCount=0
+                }
+                else{
+                  console.log(resSpecCount+" count of all specific alerts and tickers")
+                  newSpecCount=resSpecCount
+                }
+              }
+            })
+           console.log("specific, new count"+newSpecCount)
+           console.log("specific, old count"+oldCount)
+            if(newSpecCount>oldCount){
+              app.models.tradingview_alerts.find({where:{or:[{and:[onlyTitle,{and:[{ticker:{"neq":" "}},{ticker:{"neq":null}}]}]},{and:[{title:{"neq":" "}},{and:[{title:{"neq":null}}]},onlyTicker]},{and:[{or:[secondaryTitle]},{or:[secondaryTicker]}]}]},order:"id desc",limit:newSpecCount-oldCount},function(err,res){
+                if(err){
+                  console.log(err+"error and all other conditions with alert values")
+                  console.log("error in conditions")
+                }
+                else{
+                  if(res){
+                      //alertValue="Hi, you have new alerts "+res[0].title
+                      newAlertValue="Hi, you have some new alerts "
+                      res.forEach((k,i)=>{
+                        newAlertValue+=k.title+','
+                      })
+                      specAlertValue=newAlertValue.slice(0, -1)
+                    console.log(specAlertValue+" alerts for all other conditions")
+                    generalChannel.send(specAlertValue)
+                  }
+                }
+              })
+              oldCount=newSpecCount
+            }
+            else{
+              specAlertValue="Hi, your alerts are up to date"
+              console.log("Hi, your spec alerts are up to date")
+              generalChannel.send(specAlertValue)
+            }
+          }
+          else{
+            app.models.tradingview_alerts.count({where:{or:[{and:[onlyTitle,{and:[{ticker:{"neq":" "}},{ticker:{"neq":null}}]}]},{and:[{title:{"neq":" "}},{and:[{title:{"neq":null}}]},onlyTicker]}]}},function(erronlytTitleOnlytTickerresCount,resonlytTitleOnlytTickerresCount){
+              if(erronlytTitleOnlytTickerresCount){
+                console.log(erronlytTitleOnlytTickerresCount+" case 3 alert count err ")
+                oldCount=0
+              }
+              else{
+                console.log(resonlytTitleOnlytTickerresCount+" case 3 alert count res")
+                newSpecCount=resonlytTitleOnlytTickerresCount
+              }
+            })
+            console.log("specific, new count"+newSpecCount)
+            console.log("specific, old count"+oldCount)
+             if(newSpecCount>oldCount){
+               app.models.tradingview_alerts.find({where:{or:[{and:[onlyTitle,{and:[{ticker:{"neq":" "}},{ticker:{"neq":null}}]}]},{and:[{title:{"neq":" "}},{and:[{title:{"neq":null}}]},onlyTicker]}]},order:"id desc",limit:newSpecCount-oldCount},function(erronlytTitleOnlytTickerres,resonlytTitleOnlytTickerres){
+                 if(erronlytTitleOnlytTickerres){
+                   console.log(erronlytTitleOnlytTickerres+"case 3 alert  err")
+                 }
+                 else{
+                   if(resonlytTitleOnlytTickerres){
+                       //alertValue="Hi, you have new alerts "+res[0].title
+                       newAlertValue="Hi, you have some new alerts "
+                       resonlytTitleOnlytTickerres.forEach((k,i)=>{
+                         newAlertValue+=k.title+','
+                       })
+                       specAlertValue=newAlertValue.slice(0, -1)
+                     console.log(specAlertValue+" alerts for all other conditions")
+                     generalChannel.send(specAlertValue)
+                   }
+                 }
+               })
+               oldCount=newSpecCount
+              }
+          }
+        }
+        else{
+          if(SpecificAlertsAndTickers!==null){
+            secondaryTitle=primaryTitle.slice(0, -1)
+            secondaryTicker=primaryTicker.slice(0, -1)
+            app.models.tradingview_alerts.count({where:{or:[{and:[{and:[{title:{"neq":" "}},{title:{"neq":null}}]},onlyTicker]},{and:[{or:[secondaryTitle]},{or:[secondaryTicker]}]}]}},function(errSpecalertCount,resSpecalertCount){
+              if(errSpecalertCount){
+                console.log(errSpecalertCount+" case 4 alert count err ")
+                newSpecCount=0
+              }
+              else{
+                  console.log(resSpecalertCount+" case 4 alert count err ")
+                  newSpecCount=resSpecalertCount
+                }
+            })
+            if(newSpecCount>oldCount){
+              app.models.tradingview_alerts.find({where:{or:[{and:[{title:{"neq":" "}},{and:[{title:{"neq":null}}]},onlyTicker]},{and:[{or:[secondaryTitle]},{or:[secondaryTicker]}]}]},order:"id desc",limit:newSpecCount-oldCount},function(errSpecalertRes,SpecalertRes){
+                if(errSpecalertRes){
+                  console.log(errSpecalertRes+"case 5 alert count err")
+                }
+                else{
+                  if(SpecalertRes){
+                      //alertValue="Hi, you have new alerts "+res[0].title
+                      newAlertValue="Hi, you have some new alerts "
+                      SpecalertRes.forEach((k,i)=>{
+                        newAlertValue+=k.title+','
+                      })
+                      specAlertValue=newAlertValue.slice(0, -1)
+                    console.log(specAlertValue+" case 5 alert count res")
+                    generalChannel.send(specAlertValue)
+                  }
+                }
+              })
+              oldCount=newSpecCount
+            }
+            else{
+              specAlertValue="Hi, your alerts are up to date"
+              console.log("Hi, your spec alerts are up to date")
+              generalChannel.send(specAlertValue)
+            }
+          }
+          else{
+            app.models.tradingview_alerts.count({where:{and:[{title:{"neq":" "}},{and:[{title:{"neq":null}}]},onlyTicker]},function(errOnlytTickerAlertCount,resOnlytTickerAlertCount){
+              if(errOnlytTickerAlertCount){
+                console.log(errOnlytTickerAlertCount+" case 6 alert count err ")
+                newSpecCount=0
+              }
+              else{
+                console.log(resOnlytTickerAlertCount+" case 6 alert count res")
+                newSpecCount=resOnlytTickerAlertCount
+              }
+            }
+          })
+          if(newSpecCount>oldCount){
+            app.models.tradingview_alerts.find({where:{and:[{title:{"neq":" "}},{and:[{title:{"neq":null}}]},onlyTicker]},order:"id desc",limit:newSpecCount-oldCount},function(errOnlytTickerAlert,OnlytTickerAlertRes){
+              if(errOnlytTickerAlert){
+                console.log(errOnlytTickerAlert+"case 6 alert  err")
+              }
+              else{
+                if(OnlytTickerAlertRes){
+                    //alertValue="Hi, you have new alerts "+res[0].title
+                    newAlertValue="Hi, you have some new alerts "
+                    OnlytTickerAlertRes.forEach((k,i)=>{
+                      newAlertValue+=k.title+','
+                    })
+                    specAlertValue=newAlertValue.slice(0, -1)
+                  console.log(specAlertValue+" alerts for all other conditions")
+                  generalChannel.send(specAlertValue)
+                }
+              }
+            })
+            oldCount=newSpecCount
+          }
+          else{
+            specAlertValue="Hi, your alerts are up to date"
+            console.log("Hi, your spec alerts are up to date")
+            generalChannel.send(specAlertValue)
+          }
+          }
+        }
+      }
+      else{
+        if(SpecificAlertsAndAllTickers!==null){
+          onlyTitle=onlyPrimaryTitle.slice(0, -1)
+          if(SpecificAlertsAndTickers!==null){
+            secondaryTitle=primaryTitle.slice(0, -1)
+            secondaryTicker=primaryTicker.slice(0, -1)
+            app.models.tradingview_alerts.count({where:{or:[{and:[onlyTitle,{and:[{ticker:{"neq":" "}},{ticker:{"neq":null}}]}]},{and:[{or:[secondaryTitle]},{or:[secondaryTicker]}]}]}},function(errOnlyTickerAndOnlyTitleAlertCount,resOnlyTickerAndOnlyTitleAlertCount){
+              if(errOnlyTickerAndOnlyTitleAlertCount){
+                console.log(errOnlyTickerAndOnlyTitleAlertCount+" case 6 alert count err ")
+                newSpecCount=0
+              }
+              else{
+                  console.log(resOnlyTickerAndOnlyTitleAlertCount+" case 6 alert count res")
+                  newSpecCount=resOnlyTickerAndOnlyTitleAlertCount
+              }
+            })
+            if(newSpecCount>oldCount){
+              app.models.tradingview_alerts.find({where:{or:[{and:[{ticker:{"neq":" "}},{and:[{ticker:{"neq":null}}]},onlyTitle]},{and:[{or:[secondaryTitle]},{or:[secondaryTicker]}]}]},order:"id desc",limit:newSpecCount-oldCount},function(errOnlyTickerAndOnlyTitleAlert,resOnlyTickerAndOnlyTitleAlertRes){
+                if(errOnlyTickerAndOnlyTitleAlert){
+                  console.log(errOnlyTickerAndOnlyTitleAlert+"case 6 alert res err")
+                }
+                else{
+                  if(resOnlyTickerAndOnlyTitleAlertRes){
+                      //alertValue="Hi, you have new alerts "+res[0].title
+                      newAlertValue="Hi, you have some new alerts "
+                      resOnlyTickerAndOnlyTitleAlertRes.forEach((k,i)=>{
+                        newAlertValue+=k.title+','
+                      })
+                      specAlertValue=newAlertValue.slice(0, -1)
+                    console.log(specAlertValue+" case 6 alert  res")
+                    generalChannel.send(specAlertValue)
+                  }
+                }
+              })
+              oldCount=newSpecCount
+            }
+            else{
+              specAlertValue="Hi, your alerts are up to date"
+              console.log("Hi, your spec alerts are up to date")
+              generalChannel.send(specAlertValue)
+            }
+          }
+          else{
+            app.models.tradingview_alerts.count({where:{and:[onlyTitle,{and:[{ticker:{"neq":" "}},{ticker:{"neq":null}}]}]}},function(errAllTickerAndOnlyTitleAlertCount,resAllTickerAndOnlyTitleAlertCount){
+              if(errAllTickerAndOnlyTitleAlertCount){
+                console.log(errAllTickerAndOnlyTitleAlertCount+" case 7 alert count err ")
+                newSpecCount=0
+              }
+              else{
+                  console.log(resAllTickerAndOnlyTitleAlertCount+" case 7 alert count res")
+                  newSpecCount=resAllTickerAndOnlyTitleAlertCount
+              }
+            })
+            if(newSpecCount>oldCount){
+              app.models.tradingview_alerts.find({where:{and:[onlyTitle,{and:[{ticker:{"neq":" "}},{ticker:{"neq":null}}]}]},order:"id desc",limit:newSpecCount-oldCount},function(errAllTickerAndOnlyTitleAlert,resAllTickerAndOnlyTitleAlert){
+                if(errAllTickerAndOnlyTitleAlert){
+                  console.log(errAllTickerAndOnlyTitleAlert+"case 6 alert res err")
+                }
+                else{
+                  if(resAllTickerAndOnlyTitleAlert){
+                      //alertValue="Hi, you have new alerts "+res[0].title
+                      newAlertValue="Hi, you have some new alerts "
+                      resAllTickerAndOnlyTitleAlert.forEach((k,i)=>{
+                        newAlertValue+=k.title+','
+                      })
+                      specAlertValue=newAlertValue.slice(0, -1)
+                    console.log(specAlertValue+" case 6 alert  res")
+                    generalChannel.send(specAlertValue)
+                  }
+                }
+              })
+              oldCount=newSpecCount
+            }
+            else{
+              specAlertValue="Hi, your alerts are up to date"
+              console.log("Hi, your spec alerts are up to date")
+              generalChannel.send(specAlertValue)
+            }
+          }
+        }
+        else{
+          specAlertValue="Hi, your alerts are up to date"
+            console.log("Hi, your spec alerts are up to date")
+            generalChannel.send(specAlertValue)
+        }
+      }
+    }
+        //generalChannel.send(alertValue)
+    }, checkthe_interval);
+
+  })
 client.login("OTQ3OTE1OTc1OTcyNTA3NzE4.Yh0NjA.geJKP-D07fO9yiCFTrAPPq5PnR4")
-app.start = function () {
-
-    
-
-    //Isshan stuff
-  
-  
-  
+app.start = function () { 
     app.use(function (req, response, next) {
       // // console.log('in cors');
       response.setHeader("Access-Control-Allow-Origin", "*");
@@ -136,8 +563,6 @@ app.start = function () {
       next();
     });
   
-   
-   //my stuff****************** 
     // start the web server
     return app.listen(function () {
 
@@ -149,10 +574,6 @@ app.start = function () {
         console.log('Browse your REST API at %s%s', baseUrl, explorerPath);
       }
     });
-  //*******MY STUFF END******* */
-  
-  
-   
   };
  
   // Bootstrap the application, configure models, datasources and middleware.
@@ -163,12 +584,6 @@ app.start = function () {
     // start the server if `$ node server.js`
     if (require.main === module)
       app.start();
-
-      // app.models.tradingview_alerts.find((err,result)=>{
-      //      console.log(result);
-      //      console.log(err);
-      //   })
-  
     });
 
 

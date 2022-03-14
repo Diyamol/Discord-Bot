@@ -1,0 +1,23 @@
+{
+  "name": "trading_view_subscription",
+  "base": "PersistedModel",
+  "idInjection": true,
+  "options": {
+    "validateUpsert": true
+  },
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "alert_keyword": {
+      "type": "string"
+    },
+    "ticker": {
+      "type": "string"
+    }
+  },
+  "validations": [],
+  "relations": {},
+  "acls": [],
+  "methods": {}
+}

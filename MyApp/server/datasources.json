@@ -9,5 +9,16 @@
         "user": "finuser@devtrustd",
         "connector": "mysql",
         "collation": "utf8mb4"
+      },
+      "mysqlTrustDSpaceDb":{
+        "host": "devtrustd.mysql.database.azure.com",
+        "port": 3306,
+        "url": "",
+        "database": "trustdspace",
+        "password": "yF1Xqf!46QHe",
+        "name": "mysqlTrustDSpaceDb",
+        "user": "trustd_root@devtrustd",
+        "connector": "mysql",
+        "collation": "utf8mb4"
       }
 }
