@@ -2,10 +2,16 @@
   "name": "trading_view_subscription",
   "base": "PersistedModel",
   "idInjection": true,
+  
   "options": {
     "validateUpsert": true
   },
   "properties": {
+    "id": {
+      "type": "Number",
+       "id": true,
+       "generated": true
+      },
     "user_id": {
       "type": "string"
     },

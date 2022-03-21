@@ -12,6 +12,7 @@ const { Client, Intents,Discord } = require('discord.js');
 const configVal = require("./config.json");
 const { channel } = require('diagnostics_channel');
 const { title } = require('process');
+const axios = require('axios');
 //const client = new Discord.Client();
 
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES] });
@@ -29,16 +30,165 @@ client.on('ready',()=>{
     let generalChannel=client.channels.cache.get("947910712951463950")
     let alertsChannel=client.channels.cache.get("952954022376120320")
     var checkminutes = 1, checkthe_interval = checkminutes * 60 * 1000; //This checks every 1 minutes, change 10 to whatever minute you'd like
-     var oldCount=0,alertCount=0,newAllCount,newSpecCount;
+     var oldCount=0,newAllCount,newSpecCount;
      var allAlertsAndTickers
-     var allAlertsAndSpecificTickers,allAlertsAndTickerNull=0,nullAlertsAndTickers=0,alertsAndNullTickers=0
+     var allAlertsAndSpecificTickers
      var SpecificAlertsAndAllTickers
      var SpecificAlertsAndTickers
-     var onlyTicker='',onlySingleTicker=''
-     var onlyTitle='',onlySingleTitle=''
+     var onlyTicker=''
+     var onlyTitle=''
      var currentTitle,mainTitle,primaryTitle='',secondaryTitle='',onlyPrimaryTitle=''
      var currentTicker,mainTicker,primaryTicker='',secondaryTicker='',onlyPrimaryTicker=''
+     var reqTitle1='',reqTicker1='',newPost
+     var insertTitle,insertTicker,insertId
 
+     const sendPostRequest = async () => {
+      try {
+          const resp = await axios.post('https://dev-finance-server.azurewebsites.net/api/tradingview_alerts/titleCount',newPost);
+          console.log(resp.data.count.cnt);
+          alertsChannel.send("Total number of alerts for title: "+newPost.reqTitle+" and ticker: "+newPost.reqTicker+" is, "+resp.data.count.cnt)
+      } catch (err) {
+         
+          console.error(err);
+          
+      }
+  };
+  client.on('messageCreate',(receivedMessage)=>{
+    if(receivedMessage.author==client.user){
+         return
+     }
+     if (receivedMessage.content==="Hi" ||receivedMessage.content==="hi"){
+         initialCommand(receivedMessage)
+     }
+     else{
+      processCommand(receivedMessage)
+     }
+ })
+
+ function initialCommand(receivedMessage){
+  receivedMessage.channel.send("Ask me anything")
+ }
+
+ function processCommand(receivedMessage){
+  let fullCommand=receivedMessage.content
+  let splitCommand=fullCommand.split(" ")
+  let primaryCommand=splitCommand[0]
+  let argumentTitle=splitCommand[1]
+  let argumentTicker=splitCommand[2]
+  let argumentTicker1=splitCommand[3]
+  if(argumentTitle!==null && argumentTitle!==""){
+    if(primaryCommand===('subscribe'||'Subscribe')){
+      subscribeAlerts(argumentTitle,argumentTicker,receivedMessage)
+    }
+    else if(primaryCommand===('modify'||'modify')){
+      modifyAlerts(argumentTitle,argumentTicker,argumentTicker1,receivedMessage)
+    }
+    else if(primaryCommand===('remove'||'remove')){
+      removeAlerts(argumentTitle,argumentTicker,receivedMessage)
+    }
+  }
+ }
+ function checkExistingAlertsAndTickers(argumentTitle,argumentTicker){
+  insertTitle=argumentTitle
+  insertTicker=argumentTicker
+  app.models.trading_view_subscription.findOne({where:{and:[{user_id:'discord_alerts'},{alert_keyword:insertTitle},{ticker:insertTicker}]}},function(errCheckExist,getExistRes){
+    if(errCheckExist){
+      console.log(errCheckExist+'error in check exist')
+      return 0
+    }
+    else{
+      console.log(getExistRes)
+      return getExistRes
+    }
+  })
+ }
+function modifyAlerts(argumentTitle,argumentTicker,argumentTicker1,receivedMessage){
+  insertTitle=argumentTitle
+  insertTicker=argumentTicker
+  var insertTicker1=argumentTicker1
+  app.models.trading_view_subscription.findOne({where:{and:[{user_id:'discord_alerts'},{alert_keyword:insertTitle},{ticker:insertTicker}]}},function(errCheckExist,getExistRes){
+    if(errCheckExist){
+      console.log(errCheckExist+'error in check exist')
+    }
+    else{
+      if(getExistRes===null)
+      {
+        console.log("Doesn't exist!!! Try new one ")
+     //   receivedMessage.channel.send("Doesn't exist!!Try new one")
+      }
+      else{
+        var id=getExistRes.id
+        app.models.trading_view_subscription.updateAll({id:getExistRes.id},{ticker:insertTicker1},function(err,result){
+          if(err){
+            console.log("modification failed"+err)
+          }
+          else{
+            console.log("Modified your subscription")
+            receivedMessage.channel.send("Modified your subscription")
+          }
+      })
+      }
+    }
+  })
+}
+
+function removeAlerts(argumentTitle,argumentTicker,receivedMessage){
+  insertTitle=argumentTitle
+  insertTicker=argumentTicker
+  app.models.trading_view_subscription.findOne({where:{and:[{user_id:'discord_alerts'},{alert_keyword:insertTitle},{ticker:insertTicker}]}},function(errCheckExist,getExistRes){
+    if(errCheckExist){
+      console.log(errCheckExist+'error in check exist')
+    }
+    else{
+      if(getExistRes===null)
+      {
+        console.log("Doesn't exist!!! Try new one ")
+     //   receivedMessage.channel.send("Doesn't exist!!Try new one")
+      }
+      else{
+        var id=getExistRes.id
+        app.models.trading_view_subscription.destroyById(id,function(err,result){
+          if(err){
+            console.log("deletion failed"+err)
+          }
+          else{
+            console.log("unsubscribed")
+            receivedMessage.channel.send("Unsubscribed")
+          }
+      })
+      }
+    }
+  })
+}
+
+ function subscribeAlerts(argumentTitle,argumentTicker,receivedMessage){
+  insertTitle=argumentTitle
+  insertTicker=argumentTicker
+  app.models.trading_view_subscription.findOne({where:{and:[{user_id:'discord_alerts'},{alert_keyword:insertTitle},{ticker:insertTicker}]}},function(errCheckExist,getExistRes){
+    if(errCheckExist){
+      console.log(errCheckExist+'error in check exist')
+    }
+    else{
+      if(getExistRes===null)
+      {
+        app.models.trading_view_subscription.create([{user_id:'discord_alerts',alert_keyword:insertTitle,ticker:insertTicker}],
+          function(err,result){
+            if(err){
+              console.log("insertion failed"+err)
+            }
+            else{
+              receivedMessage.channel.send("Subscribed to "+insertTitle+" and "+insertTicker)
+            }
+        })
+      }
+      else{
+            console.log("exist "+getExistRes.id)
+            receivedMessage.channel.send("Already exist!!Try new one")
+      }
+    }
+  })
+ 
+ }
      // ****************fetching all conditions from trading_view_subscription****************
      app.models.trading_view_subscription.find(function(error,rs){
       if(error){
@@ -134,10 +284,10 @@ if(allAlertsAndTickers!==null){
         oldCount=2
       }
       else{
-        console.log(resultAllCount+ " result count for all titles and tickers")
+      //  console.log(resultAllCount+ " result count for all titles and tickers")
         oldCount=resultAllCount
        // newAllCount=oldCount
-        console.log(newAllCount+ " result count for all titles and tickers new")
+      //  console.log(newAllCount+ " result count for all titles and tickers new")
       }
     }
   })
@@ -248,11 +398,11 @@ else{
 }
 
     setInterval(function() {
-     // console.log(allAlertsAndTickers)
+     
      
     if(allAlertsAndTickers===1){
       app.models.tradingview_alerts.count({where:{and:[{and:[{title:{"neq":" "}},{ticker:{"neq":" "}}]},{and:[{title:{"neq":null}},{ticker:{"neq":null}}]}]},order:"time desc"},function(errAllNewCount,resultAllCount){
-       // console.log(errAllNewCount,resultAllCount)
+       
         if(errAllNewCount){
           console.log("error in count with all titles and tickers "+errAllNewCount)
           newAllCount=1
@@ -263,43 +413,69 @@ else{
             newAllCount=2
           }
           else{
-           // console.log(resultAllCount+ " new result count for all titles and tickers x")
+           
             newAllCount=resultAllCount
-           // console.log("resultAllCount "+newAllCount)
+           
           }
         }
       })
-     console.log("all, new count "+newAllCount)
+     ////console.log("all, new count "+newAllCount)
      console.log("all, old count "+oldCount)
-     //oldCount=0
+    
       if(newAllCount>oldCount){
         app.models.tradingview_alerts.find({where:{and:[{and:[{title:{"neq":" "}},{ticker:{"neq":" "}}]},{and:[{title:{"neq":null}},{ticker:{"neq":null}}]}]},order:"time desc",limit:newAllCount-oldCount},function(errAll,resAll){
           if(errAll){
             console.log(errAll+" All tickers and titles")
-           // console.log("error in conditions with all tickers and titles")
+           
           }
           else{
             if(resAll){
-                //alertValue="Hi, you have some new alerts "+resAll[0].title
+                
                 newAlertValue="Hi, you have some new alerts "
                 resAll.forEach((k,i)=>{
                   newAlertValue+=k.title+','
+                  reqTitle1=k.title
+                  reqTicker1=k.ticker
                 })
                 alertValue=newAlertValue.slice(0, -1)
               console.log(alertValue+" all titles and tickers with new alerts")
               generalChannel.send(alertValue)
               alertsChannel.send(alertValue)
+              newPost={
+                id:1,
+                reqTitle:reqTitle1,
+                reqTicker:reqTicker1
+              }
+              sendPostRequest(newPost);
             }
           }
         })
         oldCount=newAllCount
       }
       else{
-        alertValue="Hi, your alerts are up to date"
+       alertValue="Hi, your alerts are up to date"
         console.log("Hi, your all alerts are up to date")
-        generalChannel.send(alertValue)
-        alertsChannel.send(alertValue)
-      }
+       alertsChannel.send(alertValue)
+       generalChannel.send(alertValue)
+       if((reqTitle1!=='' &&reqTitle1!==null )&& (reqTicker1!==''&& reqTicker1!==null)){
+         console.log(reqTitle1,reqTicker1)
+        newPost={
+          id:1,
+          reqTitle:reqTitle1,
+          reqTicker:reqTicker1
+        }
+       }
+       else{
+        newPost={
+          id:1,
+          reqTitle:'XY',
+          reqTicker:'MNO'
+        }
+       }
+       
+       sendPostRequest(newPost);
+    
+    }
     }
     else{
       if(allAlertsAndSpecificTickers!==null){
@@ -336,15 +512,22 @@ else{
                 }
                 else{
                   if(res){
-                      //alertValue="Hi, you have new alerts "+res[0].title
                       newAlertValue="Hi, you have some new alerts "
                       res.forEach((k,i)=>{
                         newAlertValue+=k.title+','
+                        reqTitle1=k.title
+                        reqTicker1=k.ticker
                       })
                       specAlertValue=newAlertValue.slice(0, -1)
                     console.log(specAlertValue+" alerts for all other conditions")
                     generalChannel.send(specAlertValue)
                     alertsChannel.send(alertValue)
+                    newPost={
+                      id:1,
+                      reqTitle:reqTitle1,
+                      reqTicker:reqTicker1
+                    }
+                    sendPostRequest(newPost);
                   }
                 }
               })
@@ -355,6 +538,22 @@ else{
               console.log("Hi, your spec alerts are up to date")
               generalChannel.send(specAlertValue)
               alertsChannel.send(alertValue)
+              if((reqTitle1!=="" ||reqTitle1!==null )&& (reqTicker1!==""|| reqTicker1!==null)){
+                console.log(reqTitle1,reqTicker1)
+               newPost={
+                 id:1,
+                 reqTitle:reqTitle1,
+                 reqTicker:reqTicker1
+               }
+              }
+              else{
+               newPost={
+                 id:1,
+                 reqTitle:'XY',
+                 reqTicker:'MNO'
+               }
+              }
+              sendPostRequest(newPost);
             }
           }
           else{
@@ -377,19 +576,48 @@ else{
                  }
                  else{
                    if(resonlytTitleOnlytTickerres){
-                       //alertValue="Hi, you have new alerts "+res[0].title
+                      
                        newAlertValue="Hi, you have some new alerts "
                        resonlytTitleOnlytTickerres.forEach((k,i)=>{
                          newAlertValue+=k.title+','
+                         reqTitle1=k.title
+                         reqTicker1=k.ticker
                        })
                        specAlertValue=newAlertValue.slice(0, -1)
                      console.log(specAlertValue+" alerts for all other conditions")
                      generalChannel.send(specAlertValue)
                      alertsChannel.send(alertValue)
+                     newPost={
+                      id:1,
+                      reqTitle:reqTitle1,
+                      reqTicker:reqTicker1
+                    }
+                    sendPostRequest(newPost);
                    }
                  }
                })
                oldCount=newSpecCount
+              }
+              else{
+                specAlertValue="Hi, your alerts are up to date"
+                console.log("Hi, your spec alerts are up to date")
+                generalChannel.send(specAlertValue)
+                alertsChannel.send(alertValue)
+                if((reqTitle1!=="" ||reqTitle1!==null )&& (reqTicker1!==""|| reqTicker1!==null)){
+                 newPost={
+                   id:1,
+                   reqTitle:reqTitle1,
+                   reqTicker:reqTicker1
+                 }
+                }
+                else{
+                 newPost={
+                   id:1,
+                   reqTitle:'XY',
+                   reqTicker:'MNO'
+                 }
+                }
+                sendPostRequest(newPost);
               }
           }
         }
@@ -418,11 +646,19 @@ else{
                       newAlertValue="Hi, you have some new alerts "
                       SpecalertRes.forEach((k,i)=>{
                         newAlertValue+=k.title+','
+                        reqTitle1=k.title
+                         reqTicker1=k.ticker
                       })
                       specAlertValue=newAlertValue.slice(0, -1)
                     console.log(specAlertValue+" case 5 alert count res")
                     generalChannel.send(specAlertValue)
                     alertsChannel.send(alertValue)
+                    newPost={
+                      id:1,
+                      reqTitle:reqTitle1,
+                      reqTicker:reqTicker1
+                    }
+                    sendPostRequest(newPost);
                   }
                 }
               })
@@ -433,6 +669,21 @@ else{
               console.log("Hi, your spec alerts are up to date")
               generalChannel.send(specAlertValue)
               alertsChannel.send(alertValue)
+              if((reqTitle1!=="" ||reqTitle1!==null )&& (reqTicker1!==""|| reqTicker1!==null)){
+                newPost={
+                  id:1,
+                  reqTitle:reqTitle1,
+                  reqTicker:reqTicker1
+                }
+               }
+               else{
+                newPost={
+                  id:1,
+                  reqTitle:'XY',
+                  reqTicker:'MNO'
+                }
+               }
+               sendPostRequest(newPost);
             }
           }
           else{
@@ -458,11 +709,19 @@ else{
                     newAlertValue="Hi, you have some new alerts "
                     OnlytTickerAlertRes.forEach((k,i)=>{
                       newAlertValue+=k.title+','
+                      reqTitle1=k.title
+                      reqTicker1=k.ticker
                     })
                     specAlertValue=newAlertValue.slice(0, -1)
                   console.log(specAlertValue+" alerts for all other conditions")
                   generalChannel.send(specAlertValue)
                   alertsChannel.send(alertValue)
+                  newPost={
+                    id:1,
+                    reqTitle:reqTitle1,
+                    reqTicker:reqTicker1
+                  }
+                  sendPostRequest(newPost);
                 }
               }
             })
@@ -473,6 +732,21 @@ else{
             console.log("Hi, your spec alerts are up to date")
             generalChannel.send(specAlertValue)
             alertsChannel.send(alertValue)
+            if((reqTitle1!=="" ||reqTitle1!==null )&& (reqTicker1!==""|| reqTicker1!==null)){
+              newPost={
+                id:1,
+                reqTitle:reqTitle1,
+                reqTicker:reqTicker1
+              }
+             }
+             else{
+              newPost={
+                id:1,
+                reqTitle:'XY',
+                reqTicker:'MNO'
+              }
+             }
+             sendPostRequest(newPost);
           }
           }
         }
@@ -504,11 +778,19 @@ else{
                       newAlertValue="Hi, you have some new alerts "
                       resOnlyTickerAndOnlyTitleAlertRes.forEach((k,i)=>{
                         newAlertValue+=k.title+','
+                        reqTitle1=k.title
+                        reqTicker1=k.ticker
                       })
                       specAlertValue=newAlertValue.slice(0, -1)
                     console.log(specAlertValue+" case 6 alert  res")
                     generalChannel.send(specAlertValue)
                     alertsChannel.send(alertValue)
+                    newPost={
+                      id:1,
+                      reqTitle:reqTitle1,
+                      reqTicker:reqTicker1
+                    }
+                    sendPostRequest(newPost);
                   }
                 }
               })
@@ -519,6 +801,21 @@ else{
               console.log("Hi, your spec alerts are up to date")
               generalChannel.send(specAlertValue)
               alertsChannel.send(alertValue)
+              if((reqTitle1!=="" ||reqTitle1!==null )&& (reqTicker1!==""|| reqTicker1!==null)){
+                newPost={
+                  id:1,
+                  reqTitle:reqTitle1,
+                  reqTicker:reqTicker1
+                }
+               }
+               else{
+                newPost={
+                  id:1,
+                  reqTitle:'XY',
+                  reqTicker:'MNO'
+                }
+               }
+               sendPostRequest(newPost);
             }
           }
           else{
@@ -543,11 +840,19 @@ else{
                       newAlertValue="Hi, you have some new alerts "
                       resAllTickerAndOnlyTitleAlert.forEach((k,i)=>{
                         newAlertValue+=k.title+','
+                        reqTitle1=k.title
+                        reqTicker1=k.ticker
                       })
                       specAlertValue=newAlertValue.slice(0, -1)
                     console.log(specAlertValue+" case 6 alert  res")
                     generalChannel.send(specAlertValue)
                     alertsChannel.send(alertValue)
+                    newPost={
+                      id:1,
+                      reqTitle:reqTitle1,
+                      reqTicker:reqTicker1
+                    }
+                    sendPostRequest(newPost);
                   }
                 }
               })
@@ -558,6 +863,21 @@ else{
               console.log("Hi, your spec alerts are up to date")
               generalChannel.send(specAlertValue)
               alertsChannel.send(alertValue)
+              if((reqTitle1!==" " ||reqTitle1!==null) && (reqTicker1!==" "||reqTicker1!==null)){
+                newPost={
+                  id:1,
+                  reqTitle:reqTitle1,
+                  reqTicker:reqTicker1
+                }
+               }
+               else{
+                newPost={
+                  id:1,
+                  reqTitle:'XY',
+                  reqTicker:'MNO'
+                }
+               }
+               sendPostRequest(newPost);
             }
           }
         }
@@ -566,6 +886,21 @@ else{
             console.log("Hi, your spec alerts are up to date")
             generalChannel.send(specAlertValue)
             alertsChannel.send(alertValue)
+            if((reqTitle1!=="" ||reqTitle1!==null )&& (reqTicker1!==""|| reqTicker1!==null)){
+              newPost={
+                id:1,
+                reqTitle:reqTitle1,
+                reqTicker:reqTicker1
+              }
+             }
+             else{
+              newPost={
+                id:1,
+                reqTitle:'XY',
+                reqTicker:'MNO'
+              }
+             }
+             sendPostRequest(newPost);
         }
       }
     }
